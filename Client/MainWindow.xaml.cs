@@ -18,20 +18,19 @@ namespace Client
         partial class ClientObject
         {
             public Socket socket = null;
-            public const int bufferSize = 2;
+            public const int bufferSize = 5;
             public byte[] buffer = new byte[bufferSize];
         }
 
         Socket client;
         private static ManualResetEvent connectDone = new ManualResetEvent(false);
-        byte[] outData = new byte[2];
+        byte[] outData = new byte[ClientObject.bufferSize];
+        private static String response = String.Empty;
 
         public MainWindow()
         {
             InitializeComponent();
-
             Connect();
-            
         }
 
         private void Connect()
@@ -47,16 +46,33 @@ namespace Client
 
                 client.BeginConnect(endPoint, new AsyncCallback(ConnectCallback), client);
                 connectDone.WaitOne();
-
-                lbLog.Items.Add("WaitOne");
-
-                Receive(client);
-
-                lbLog.Items.Add("Receive(client)");
             }
             catch (Exception e)
             {
-                lbLog.Items.Add(e.ToString());
+                lbLog.Items.Add("Connect: " + e.ToString());
+            }
+        }
+
+        private void ConnectCallback(IAsyncResult ar)
+        {
+            try
+            {
+                connectDone.Set();
+
+                Socket clientSocket = (Socket)ar.AsyncState;
+                clientSocket.EndConnect(ar);
+                lbLog.Dispatcher.Invoke(new Action(delegate ()
+                {
+                    lbLog.Items.Add("Connected");
+                }));
+                Receive(clientSocket);
+            }
+            catch (Exception e)
+            {
+                lbLog.Dispatcher.Invoke(new Action(delegate ()
+                {
+                    lbLog.Items.Add("ConnectCallback: " + e.ToString());
+                }));
             }
         }
 
@@ -70,55 +86,36 @@ namespace Client
             }
             catch (Exception e)
             {
-                lbLog.Items.Add(e.ToString());
+                lbLog.Items.Add("Receive: " + e.ToString());
             }
         }
-        private static String response = String.Empty;
 
         private void ReceiveCallback(IAsyncResult ar)
         {
             try
             {
-                // Retrieve the state object and the client socket 
-                // from the asynchronous state object.
                 ClientObject state = (ClientObject)ar.AsyncState;
                 Socket client = state.socket;
 
-                // Read data from the remote device.
                 int bytesRead = client.EndReceive(ar);
 
                 if (bytesRead > 1)
                 {
-                    // There might be more data, so store the data received so far.
-                    //state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
-
-                    // Get the rest of the data.
-                    //lbLog.Items.Add("state.buffer " + state.buffer[0] + " " + state.buffer[1]);
-                    parsData(state.buffer);
-                    
-
-
+                    parseData(state.buffer);
                 }
                 client.BeginReceive(state.buffer, 0, ClientObject.bufferSize, 0,
                         new AsyncCallback(ReceiveCallback), state);
-                //else
-                //{
-                //    // All the data has arrived; put it in response.
-                //    if (state.sb.Length > 1)
-                //    {
-                //        //lbLog.Items.Add(state.sb.ToString());
-                //        parsData(state.sb.ToString());
-                //    }
-                //    // Signal that all bytes have been received.
-                //}
             }
             catch (Exception e)
             {
-                //lbLog.Items.Add(e.ToString());
+                lbLog.Dispatcher.Invoke(new Action(delegate ()
+                {
+                    lbLog.Items.Add("ReceiveCallback: " + e.ToString());
+                }));
             }
         }
 
-        private void parsData(byte[] buffer)
+        private void parseData(byte[] buffer)
         {
             if (buffer[0] == 1)
             {
@@ -135,33 +132,14 @@ namespace Client
                 }));
             }
 
-            lblTimer.Dispatcher.Invoke(new Action(delegate ()
+       lblTimer.Dispatcher.Invoke(new Action(delegate ()
             {
-                lblTimer.Content = buffer[1].ToString();
+                lblTimer.Content = BitConverter.ToInt32(buffer, 1).ToString();
             }));
-        }
-
-        
-
-        private void ConnectCallback(IAsyncResult ar)
-        {
-            try
-            {
-                connectDone.Set();
-                Socket clientSocket = (Socket)ar.AsyncState;
-                clientSocket.EndConnect(ar);
-                //lbLog.Items.Add("Socket connected to " + clientSocket.RemoteEndPoint.ToString());
-                
-            }
-            catch (Exception e)
-            {
-                //lbLog.Items.Add(e.ToString());
-            }
         }
 
         private void btnStartStop_Click(object sender, RoutedEventArgs e)
         {
-            //byteData = new byte[2];
             if (btnStartStop.Content.ToString() == "Start")
             {
                 outData[0] = 1;
@@ -172,32 +150,56 @@ namespace Client
                 outData[0] = 0;
                 btnStartStop.Content = "Start";
             }
-            //client.Send(byteData);
-            client.BeginSend(outData, 0, outData.Length, 0, new AsyncCallback(SendCallback), client);
+            lbLog.Items.Add("Send: " + (outData[0] == 1 ? "Start" : "Stop"));
+            try
+            {
+                client.BeginSend(outData, 0, outData.Length, 0, new AsyncCallback(SendCallback), client);
+            }
+            catch (Exception ex)
+            {
+                lbLog.Dispatcher.Invoke(new Action(delegate ()
+                {
+                    lbLog.Items.Add("btnStartStop_Click: " + ex.ToString());
+                }));
+            }
         }
 
         private void SendCallback(IAsyncResult ar)
         {
             try
             {
-                // Retrieve the socket from the state object.
                 Socket clientSocket = (Socket)ar.AsyncState;
-
-                // Complete sending the data to the remote device.
                 int bytesSent = clientSocket.EndSend(ar);
-                //lbLog.Items.Add("Sent " + bytesSent + " bytes to server.");
-
+                lbLog.Dispatcher.Invoke(new Action(delegate ()
+                {
+                    lbLog.Items.Add("Sended message");
+                }));
             }
             catch (Exception e)
             {
-                //lbLog.Items.Add(e.ToString());
+                lbLog.Dispatcher.Invoke(new Action(delegate ()
+                {
+                    lbLog.Items.Add("SendCallback: " + e.ToString());
+                }));
             }
         }
 
         private void Window_Closed(object sender, EventArgs e)
         {
-            client.Shutdown(SocketShutdown.Both);
-            client.Close();
+            outData[0] = 2;
+            try
+            {
+                client.BeginSend(outData, 0, outData.Length, 0, new AsyncCallback(SendCallback), client);
+                client.Shutdown(SocketShutdown.Both);
+                client.Close();
+            }
+            catch (Exception ex)
+            {
+                lbLog.Dispatcher.Invoke(new Action(delegate ()
+                {
+                    lbLog.Items.Add("Window_Closed: " + ex.ToString());
+                }));
+            }
         }
     }
 }
