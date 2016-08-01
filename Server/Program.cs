@@ -1,12 +1,16 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using TestSocket.Settings;
 
 namespace Server
 {
@@ -26,13 +30,17 @@ namespace Server
             public List<Socket> clients;
         }
 
+        
         public static StateObject stateObject;
         public static ManualResetEvent allDone = new ManualResetEvent(false);
 
         public static void StartListening()
         {
-            IPAddress ipAddress = IPAddress.Parse("192.168.1.13");
-            IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 8888);
+            Settings ss = JsonConvert.DeserializeObject<Settings>(File.ReadAllText("settings.json"));
+
+
+            IPAddress ipAddress = IPAddress.Parse(ss.Ip);
+            IPEndPoint localEndPoint = new IPEndPoint(ipAddress, ss.Port);
 
             
             Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);

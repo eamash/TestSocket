@@ -1,9 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Windows;
+using TestSocket.Settings;
 
 namespace Client
 {
@@ -35,12 +38,10 @@ namespace Client
         {
             try
             {
-                //IPHostEntry ipHostInfo = Dns.Resolve("localhost");
-                //IPAddress ipAddress = ipHostInfo.AddressList[0];
-                //IPEndPoint remoteEP = new IPEndPoint(ipAddress, 8888);
+                Settings ss = JsonConvert.DeserializeObject<Settings>(File.ReadAllText("settings.json"));
 
-                IPAddress ipAddress = IPAddress.Parse("192.168.1.13");
-                IPEndPoint endPoint = new IPEndPoint(ipAddress, 8888);
+                IPAddress ipAddress = IPAddress.Parse(ss.Ip);
+                IPEndPoint endPoint = new IPEndPoint(ipAddress, ss.Port);
 
                 client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 

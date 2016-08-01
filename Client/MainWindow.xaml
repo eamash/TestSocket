@@ -5,11 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525" Closed="Window_Closed">
-    <Grid>
+        Title="Client" Height="378.835" Width="981.392" Closed="Window_Closed">
+    <Grid Margin="0,0,2,0">
         <Label x:Name="lblTimer" Content="0" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="133"/>
         <Button x:Name="btnStartStop" Content="Start" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="133" Click="btnStartStop_Click"/>
-        <ListBox x:Name="lbLog" HorizontalAlignment="Left" Height="242" Margin="10,68,0,0" VerticalAlignment="Top" Width="497"/>
+        <ListBox x:Name="lbLog" HorizontalAlignment="Left" Height="242" Margin="10,68,0,0" VerticalAlignment="Top" Width="951"/>
 
     </Grid>
 </Window>
