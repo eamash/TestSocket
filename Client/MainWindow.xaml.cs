@@ -24,15 +24,23 @@ namespace Client
 
         Socket client;
         private static ManualResetEvent connectDone = new ManualResetEvent(false);
+        private static ManualResetEvent sendDone = new ManualResetEvent(false);
         byte[] outData = new byte[ClientObject.bufferSize];
         private static String response = String.Empty;
 
+        /// <summary>
+        /// Инициализируем компоненты формы, запускаем начало соединения.
+        /// </summary>
         public MainWindow()
         {
             InitializeComponent();
             Connect();
         }
 
+        /// <summary>
+        /// Создаем сокет для соединения.
+        /// Начинаем выполнение асинхронного запроса для подключения к удаленному узлу.
+        /// </summary>
         private void Connect()
         {
             try
@@ -41,9 +49,7 @@ namespace Client
 
                 IPAddress ipAddress = IPAddress.Parse(ss.Ip);
                 IPEndPoint endPoint = new IPEndPoint(ipAddress, ss.Port);
-
                 client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
 
                 client.BeginConnect(endPoint, new AsyncCallback(ConnectCallback), client);
                 connectDone.WaitOne();
@@ -55,6 +61,11 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// Завершаем ожидающий асинхронный запрос на подключение.
+        /// Запускаем прием данных с подключенного сокета.
+        /// </summary>
+        /// <param name="ar">сокет для подключения</param>
         private void ConnectCallback(IAsyncResult ar)
         {
             try
@@ -78,6 +89,10 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// Начинаем выполнение асинхронного приема данных с подключенного сокета.
+        /// </summary>
+        /// <param name="client">сокет для подключения</param>
         private void Receive(Socket client)
         {
             try
@@ -92,6 +107,12 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// Завершаем отложенное асинхронное чтение.
+        /// Если прочитанные данные не пусты, расшифровываем их.
+        /// Снова запускаем выполнение асинхронного приема данных с подключенного сокета.
+        /// </summary>
+        /// <param name="ar">сокет подключения</param>
         private void ReceiveCallback(IAsyncResult ar)
         {
             try
@@ -105,8 +126,7 @@ namespace Client
                 {
                     parseData(state.buffer);
                 }
-                client.BeginReceive(state.buffer, 0, ClientObject.bufferSize, 0,
-                        new AsyncCallback(ReceiveCallback), state);
+                client.BeginReceive(state.buffer, 0, ClientObject.bufferSize, 0, new AsyncCallback(ReceiveCallback), state);
             }
             catch (Exception e)
             {
@@ -117,6 +137,14 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// Расшифровываем информацию с объекта, в первом байте приходит команда:
+        /// 0 - произошла остановка счетчика
+        /// 1 - произошел запуск счетчика
+        /// В зависимости от команды, меняем назначение кнопки запуска/остановки счетчика
+        /// Меняем значение счетчика.
+        /// </summary>
+        /// <param name="buffer"></param>
         private void parseData(byte[] buffer)
         {
             if (buffer[0] == 1)
@@ -134,12 +162,18 @@ namespace Client
                 }));
             }
 
-       lblTimer.Dispatcher.Invoke(new Action(delegate ()
+            lblTimer.Dispatcher.Invoke(new Action(delegate ()
             {
                 lblTimer.Content = BitConverter.ToInt32(buffer, 1).ToString();
             }));
         }
 
+        /// <summary>
+        /// В зависимости от текущего назначения кнопки, формируем данные для отправки.
+        /// Начинаем асинхронную передачу данных на подключенный сокет.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void btnStartStop_Click(object sender, RoutedEventArgs e)
         {
             if (btnStartStop.Content.ToString() == "Start")
@@ -166,12 +200,18 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// Завершаем асинхронную передачу данных на подключенный сокет.
+        /// </summary>
+        /// <param name="ar">сокет подключения</param>
         private void SendCallback(IAsyncResult ar)
         {
             try
             {
                 Socket clientSocket = (Socket)ar.AsyncState;
                 int bytesSent = clientSocket.EndSend(ar);
+                sendDone.Set();
+
                 lbLog.Dispatcher.Invoke(new Action(delegate ()
                 {
                     lbLog.Items.Add("Sended message");
@@ -186,12 +226,22 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// При закрытии формы формируем данные, содержащие команду закрытия формы.
+        /// Начинаем асинхронную передачу данных на подключенный сокет.
+        /// После передачи данных, блокируем передачу и получение данных для сокета.
+        /// Закрываем соединение.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Window_Closed(object sender, EventArgs e)
         {
             outData[0] = 2;
             try
             {
                 client.BeginSend(outData, 0, outData.Length, 0, new AsyncCallback(SendCallback), client);
+                sendDone.WaitOne();
+
                 client.Shutdown(SocketShutdown.Both);
                 client.Close();
             }
