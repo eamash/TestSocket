@@ -44,7 +44,7 @@ namespace Server
 
             
             Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
+            Console.WriteLine("Waiting for a connection...");
             try
             {
                 server.Bind(localEndPoint);
@@ -54,7 +54,6 @@ namespace Server
                 {
                     allDone.Reset();
 
-                    Console.WriteLine("Waiting for a connection...");
                     server.BeginAccept(new AsyncCallback(AcceptCallback), server);
 
                     allDone.WaitOne();
@@ -102,7 +101,6 @@ namespace Server
                 if (bytesRead > 0)
                 {
                     parsData(handler, client.buffer);
-                    Console.WriteLine(Encoding.ASCII.GetString(client.buffer, 0, bytesRead));
                 }
                 handler.BeginReceive(client.buffer, 0, Client.bufferSize, 0, new AsyncCallback(ReadCallback), client);
             }
@@ -119,13 +117,16 @@ namespace Server
                 case 0:
                     stateObject.timer.Enabled = false;
                     onTimerTick(stateObject.timer.Enabled);
+                    Console.WriteLine("Client {0} send \"Stop\"", handler.RemoteEndPoint.ToString());
                     break;
                 case 1:
                     stateObject.timer.Enabled = true;
+                    Console.WriteLine("Client {0} send \"Start\"", handler.RemoteEndPoint.ToString());
                     break;
                 case 2:
                     stateObject.timer.Enabled = false;
                     stateObject.clients.Remove(handler);
+                    Console.WriteLine("Client {0} send \"Close\"", handler.RemoteEndPoint.ToString());
                     if (stateObject.clients.Count != 0)
                     {
                         stateObject.timer.Enabled = true;
@@ -166,7 +167,6 @@ namespace Server
             {
                 Socket handler = (Socket)ar.AsyncState;
                 int bytesSent = handler.EndSend(ar);
-                Console.WriteLine("Sent {0} bytes to client {1}", bytesSent, handler.RemoteEndPoint.ToString());
 
             }
             catch (Exception e)

@@ -44,8 +44,10 @@ namespace Client
 
                 client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
+
                 client.BeginConnect(endPoint, new AsyncCallback(ConnectCallback), client);
                 connectDone.WaitOne();
+                MainForm.Title = "Client " + client.LocalEndPoint.ToString();
             }
             catch (Exception e)
             {
