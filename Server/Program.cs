@@ -146,13 +146,13 @@ namespace Server
                     Console.WriteLine("Client {0} send \"Start\"", handler.RemoteEndPoint.ToString());
                     break;
                 case 2:
-                    stateObject.timer.Enabled = false;
+                    //stateObject.timer.Enabled = false;
                     stateObject.clients.Remove(handler);
                     Console.WriteLine("Client {0} send \"Close\"", handler.RemoteEndPoint.ToString());
-                    if (stateObject.clients.Count != 0)
-                    {
-                        stateObject.timer.Enabled = true;
-                    }
+                    //if (stateObject.clients.Count != 0)
+                    //{
+                    //    stateObject.timer.Enabled = true;
+                    //}
                     break;
             }
         }
