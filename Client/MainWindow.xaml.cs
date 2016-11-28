@@ -27,6 +27,7 @@ namespace Client
         private static ManualResetEvent sendDone = new ManualResetEvent(false);
         byte[] outData = new byte[ClientObject.bufferSize];
         private static String response = String.Empty;
+        private Boolean connected = false;
 
         /// <summary>
         /// Инициализируем компоненты формы, запускаем начало соединения.
@@ -34,7 +35,7 @@ namespace Client
         public MainWindow()
         {
             InitializeComponent();
-            Connect();
+            //Connect();
         }
 
         /// <summary>
@@ -236,6 +237,45 @@ namespace Client
         /// <param name="e"></param>
         private void Window_Closed(object sender, EventArgs e)
         {
+            if (connected)
+            {
+                stopConnect();
+            }
+        }
+
+        private void btnConnect_Click(object sender, RoutedEventArgs e)
+        {
+            if (connected)
+            {
+                // текущее состояние - подключено
+                btnConnect.Dispatcher.Invoke(new Action(delegate()
+                {
+                    btnConnect.Content = "Connect";
+                }));
+                btnStartStop.Dispatcher.Invoke(new Action(delegate()
+                {
+                    btnStartStop.IsEnabled = false;
+                }));
+                connected = false;
+                stopConnect();
+            }else
+            {
+                // текущее состояние - отключено
+                btnConnect.Dispatcher.Invoke(new Action(delegate()
+                {
+                    btnConnect.Content = "Disconnect";
+                }));
+                btnStartStop.Dispatcher.Invoke(new Action(delegate()
+                {
+                    btnStartStop.IsEnabled = true;
+                }));
+                connected = true;
+                Connect();
+            }
+        }
+
+        private void stopConnect()
+        {
             outData[0] = 2;
             try
             {
@@ -244,14 +284,21 @@ namespace Client
 
                 client.Shutdown(SocketShutdown.Both);
                 client.Close();
+
+                lbLog.Dispatcher.Invoke(new Action(delegate()
+                {
+                    lbLog.Items.Add("Disconnected");
+                }));
+
             }
             catch (Exception ex)
             {
-                lbLog.Dispatcher.Invoke(new Action(delegate ()
+                lbLog.Dispatcher.Invoke(new Action(delegate()
                 {
-                    lbLog.Items.Add("Window_Closed: " + ex.ToString());
+                    lbLog.Items.Add("stopConnect: " + ex.ToString());
                 }));
             }
+            
         }
     }
 }

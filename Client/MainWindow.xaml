@@ -19,6 +19,7 @@
             </Button.RenderTransform>
         </Button>
         <ListBox x:Name="lbLog" Height="235" Margin="10,68,0,0" VerticalAlignment="Top" Width="470" HorizontalAlignment="Left" Padding="5,0,0,0"/>
+        <Button x:Name="btnConnect" Content="Connect" HorizontalAlignment="Left" Margin="143,41,0,0" VerticalAlignment="Top" Width="126" Click="btnConnect_Click"/>
 
     </Grid>
 </Window>

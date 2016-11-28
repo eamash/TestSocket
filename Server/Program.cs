@@ -22,16 +22,17 @@ namespace Server
             public const int bufferSize = 5;
             public byte[] buffer = new byte[bufferSize];
         }
-        public class StateObject
-        {
-            public System.Timers.Timer timer;
-            public int timerValue;
-            public List<Socket> clients;
-        }
+
+        const int countTimer = 100;
         
-        public static StateObject stateObject;
+        public static List<Socket> clientsList;
+
+        public static Counter counter;
+        private static System.Timers.Timer timer;
+
         public static ManualResetEvent allDone = new ManualResetEvent(false);
         private static byte[] byteData = new byte[Client.bufferSize];
+
 
         /// <summary>
         /// Создание сокета.
@@ -83,10 +84,12 @@ namespace Server
 
                 Console.WriteLine("Socket connected to " + handler.RemoteEndPoint.ToString());
 
-                if (!stateObject.clients.Contains(handler))
+                if (!clientsList.Contains(handler))
                 {
-                    stateObject.clients.Add(handler);
+                    clientsList.Add(handler);
                 }
+
+                onTimerTick(counter.TimerState);
 
                 Client client = new Client();
                 client.socket = handler;
@@ -137,22 +140,19 @@ namespace Server
             switch (byteData[0])
             {
                 case 0:
-                    stateObject.timer.Enabled = false;
-                    onTimerTick(stateObject.timer.Enabled);
+                    counter.TimerState = false;
+                    timer.Enabled = false;
+                    onTimerTick(counter.TimerState);
                     Console.WriteLine("Client {0} send \"Stop\"", handler.RemoteEndPoint.ToString());
                     break;
                 case 1:
-                    stateObject.timer.Enabled = true;
+                    timer.Enabled = true;
+                    counter.TimerState = true;
                     Console.WriteLine("Client {0} send \"Start\"", handler.RemoteEndPoint.ToString());
                     break;
                 case 2:
-                    //stateObject.timer.Enabled = false;
-                    stateObject.clients.Remove(handler);
+                    clientsList.Remove(handler);
                     Console.WriteLine("Client {0} send \"Close\"", handler.RemoteEndPoint.ToString());
-                    //if (stateObject.clients.Count != 0)
-                    //{
-                    //    stateObject.timer.Enabled = true;
-                    //}
                     break;
             }
         }
@@ -168,12 +168,12 @@ namespace Server
         {
             byteData[0] = (byte)(enabled ? 1 : 0);
 
-            byte[] byteTimer = BitConverter.GetBytes(stateObject.timerValue);
+            byte[] byteTimer = BitConverter.GetBytes(counter.TimerValue);
             byteTimer.CopyTo(byteData, 1);
 
             try
             {
-                foreach (Socket socket in stateObject.clients)
+                foreach (Socket socket in clientsList)
                 {
                     socket.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(SendCallback), socket);
                 }
@@ -185,14 +185,13 @@ namespace Server
         }
 
         /// <summary>
-        /// Увеличиваем счетчик и запускаем передачу данных
+        /// запускаем передачу данных
         /// </summary>
         /// <param name="source"></param>
         /// <param name="e"></param>
         private static void timerTick(Object source, ElapsedEventArgs e)
         {
-            stateObject.timerValue++;
-            onTimerTick(stateObject.timer.Enabled);
+            onTimerTick(counter.TimerState);
         }
 
         /// <summary>
@@ -213,20 +212,18 @@ namespace Server
         }
 
         /// <summary>
-        /// инициализируем занные.
+        /// инициализируем данные.
         /// </summary>
         /// <param name="args"></param>
         static void Main(string[] args)
         {
-            stateObject = new StateObject();
+            clientsList = new List<Socket>();
+            
+            counter = new Counter(countTimer);
 
-            stateObject.clients = new List<Socket>();
-
-            stateObject.timer = new System.Timers.Timer(100);
-            stateObject.timer.Elapsed += new ElapsedEventHandler(timerTick);
-            stateObject.timer.Enabled = false;
-
-            stateObject.timerValue = 0;
+            timer = new System.Timers.Timer(countTimer);
+            timer.Elapsed += new ElapsedEventHandler(timerTick);
+            timer.Enabled = false;
 
             StartListening();
         }
